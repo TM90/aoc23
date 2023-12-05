@@ -15,7 +15,6 @@ const Rgb = struct {
             const value = std.mem.trim(u8, value_color_pair.next().?, " \r\n\t");
             const color = std.mem.trim(u8, value_color_pair.next().?, " \r\n\t");
 
-            std.log.warn("Value: {s}\nColor: {s}", .{ value, color });
             if (std.mem.eql(u8, color, "red")) {
                 r = std.fmt.parseInt(u64, value, 10) catch 0;
             } else if (std.mem.eql(u8, color, "green")) {
@@ -33,14 +32,13 @@ fn valid_game_id(line: []const u8, bag: Rgb) ?u64 {
     const game = iter.next() orelse unreachable;
     var id_iter = std.mem.splitAny(u8, game, " ");
     _ = id_iter.next();
+
     const game_id = std.fmt.parseInt(u64, id_iter.next().?, 10) catch 0;
-    std.log.warn("id: {d}", .{game_id});
     const record = iter.next() orelse unreachable;
+
     var draws = std.mem.splitAny(u8, record, ";");
     while (draws.next()) |draw| {
-        std.log.warn("{s}", .{draw});
         const rgb = Rgb.parse(draw);
-        std.log.warn("{} {} {}", .{ rgb.r, rgb.g, rgb.b });
         if (rgb.r > bag.r or rgb.g > bag.g or rgb.b > bag.b) {
             return null;
         }
@@ -51,17 +49,16 @@ fn valid_game_id(line: []const u8, bag: Rgb) ?u64 {
 fn power_minimum_required(line: []const u8) u64 {
     var iter = std.mem.splitAny(u8, line, ":");
     const game = iter.next() orelse unreachable;
+
     var id_iter = std.mem.splitAny(u8, game, " ");
     _ = id_iter.next();
-    const game_id = std.fmt.parseInt(u64, id_iter.next().?, 10) catch 0;
-    std.log.warn("id: {d}", .{game_id});
+    _ = id_iter.next();
     const record = iter.next() orelse unreachable;
     var minimal_bag = Rgb{ .r = 0, .g = 0, .b = 0 };
+
     var draws = std.mem.splitAny(u8, record, ";");
     while (draws.next()) |draw| {
-        std.log.warn("{s}", .{draw});
         const rgb = Rgb.parse(draw);
-        std.log.warn("{} {} {}", .{ rgb.r, rgb.g, rgb.b });
         if (rgb.r > minimal_bag.r) {
             minimal_bag.r = rgb.r;
         }
@@ -71,9 +68,7 @@ fn power_minimum_required(line: []const u8) u64 {
         if (rgb.b > minimal_bag.b) {
             minimal_bag.b = rgb.b;
         }
-        std.log.warn("{} {} {}", .{ minimal_bag.r, minimal_bag.g, minimal_bag.b });
     }
-    std.log.warn("OUT: {} {} {}", .{ minimal_bag.r, minimal_bag.g, minimal_bag.b });
     return minimal_bag.r * minimal_bag.g * minimal_bag.b;
 }
 
