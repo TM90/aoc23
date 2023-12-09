@@ -27,7 +27,9 @@ const SchematicLine = struct {
         for (line, 0..) |character, index| {
             switch (character) {
                 '0'...'9' => {
-                    start = index;
+                    if (parse_number == false) {
+                        start = index;
+                    }
                     number = number * 10 + (character - '0');
                     parse_number = true;
                 },
@@ -38,6 +40,8 @@ const SchematicLine = struct {
                         number = 0;
                     }
                 },
+                '\n' => continue,
+                '\r' => continue,
                 else => {
                     if (parse_number) {
                         try numbers.append(number_allocator, SchematicNumber{ .number = number, .start = start, .end = index - 1 });
@@ -90,12 +94,12 @@ pub fn main() !void {
         previous_line = current_line;
         current_line = next_line;
         next_line = SchematicLine.from_raw_line(line, number_gpa.allocator(), symbol_gpa.allocator()) catch unreachable;
-        for (next_line.numbers.items(.number)) |number| {
-            std.log.warn("number: {d}", .{number});
+        for (current_line.numbers.items(.number), current_line.numbers.items(.start), current_line.numbers.items(.end)) |number, start, end| {
+            std.log.warn("{d} - {d} - {d}", .{ start, number, end });
         }
-        //for (current_line.numbers.items(.number), current_line.numbers.items(.start),current_line.numbers.items(.end)) |number, start, end| {
-        //
-        //}
+        for (next_line.symbols.items(.symbol), next_line.symbols.items(.location)) |symbol, index| {
+            std.log.warn("{d} - {c}", .{ index, symbol });
+        }
         fbs.reset();
     }
 
