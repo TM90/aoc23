@@ -14,6 +14,34 @@ const SchematicSymbol = struct {
 const SchematicNumberList = std.MultiArrayList(SchematicNumber);
 const SchematicSymbolList = std.MultiArrayList(SchematicSymbol);
 
+fn ValidPart(start: u64, end: u64, symbols: SchematicSymbolList) bool {
+    var start_compare: u64 = 0;
+    for (symbols.items(.location)) |location| {
+        if (start == 0) {
+            start_compare = 0;
+        } else {
+            start_compare = start - 1;
+        }
+        if (location <= end + 1 and location >= start_compare) {
+            return true;
+        }
+    }
+    return false;
+}
+
+fn RetrieveSummedPartValues(previous_symbols: SchematicSymbolList, current_line: SchematicLine, next_symbols: SchematicSymbolList) u64 {
+    var sum: u64 = 0;
+    for (current_line.numbers.items(.number), current_line.numbers.items(.start), current_line.numbers.items(.end)) |number, start, end| {
+        if (ValidPart(start, end, current_line.symbols) or
+            ValidPart(start, end, previous_symbols) or
+            ValidPart(start, end, next_symbols))
+        {
+            sum += number;
+        }
+    }
+    return sum;
+}
+
 const SchematicLine = struct {
     numbers: SchematicNumberList,
     symbols: SchematicSymbolList,
@@ -40,8 +68,7 @@ const SchematicLine = struct {
                         number = 0;
                     }
                 },
-                '\n' => continue,
-                '\r' => continue,
+                '\n', '\r' => continue,
                 else => {
                     if (parse_number) {
                         try numbers.append(number_allocator, SchematicNumber{ .number = number, .start = start, .end = index - 1 });
@@ -74,7 +101,7 @@ pub fn main() !void {
     const stdout_file = std.io.getStdOut().writer();
     var bw = std.io.bufferedWriter(stdout_file);
     const stdout = bw.writer();
-    const path = "input_simple.dat";
+    const path = "input.dat";
     const file = try std.fs.cwd().openFile(path, .{});
     defer file.close();
     var eof = false;
@@ -83,6 +110,7 @@ pub fn main() !void {
     var previous_line = SchematicLine.emptyLine();
     var current_line = SchematicLine.emptyLine();
     var next_line = SchematicLine.emptyLine();
+    var sum_1a: u64 = 0;
     while (!eof) {
         var number_gpa = std.heap.GeneralPurposeAllocator(.{}){};
         var symbol_gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -94,22 +122,10 @@ pub fn main() !void {
         previous_line = current_line;
         current_line = next_line;
         next_line = SchematicLine.from_raw_line(line, number_gpa.allocator(), symbol_gpa.allocator()) catch unreachable;
-        for (current_line.numbers.items(.number), current_line.numbers.items(.start), current_line.numbers.items(.end)) |number, start, end| {
-            std.log.warn("{d} - {d} - {d}", .{ start, number, end });
-        }
-        for (next_line.symbols.items(.symbol), next_line.symbols.items(.location)) |symbol, index| {
-            std.log.warn("{d} - {c}", .{ index, symbol });
-        }
+        sum_1a += RetrieveSummedPartValues(previous_line.symbols, current_line, next_line.symbols);
         fbs.reset();
     }
-
-    try stdout.print("Result 1a: \n", .{});
+    sum_1a += RetrieveSummedPartValues(current_line.symbols, next_line, SchematicSymbolList{});
+    try stdout.print("Result 1a: {d}\n", .{sum_1a});
     try bw.flush(); // don't forget to flush!
-}
-
-test "simple test" {
-    var list = std.ArrayList(i32).init(std.testing.allocator);
-    defer list.deinit(); // try commenting this out and see if zig detects the memory leak!
-    try list.append(42);
-    try std.testing.expectEqual(@as(i32, 42), list.pop());
 }
