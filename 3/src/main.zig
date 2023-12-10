@@ -68,7 +68,13 @@ const SchematicLine = struct {
                         number = 0;
                     }
                 },
-                '\n', '\r' => continue,
+                '\n', '\r' => {
+                    if (parse_number) {
+                        try numbers.append(number_allocator, SchematicNumber{ .number = number, .start = start, .end = index - 1 });
+                        parse_number = false;
+                        number = 0;
+                    }
+                },
                 else => {
                     if (parse_number) {
                         try numbers.append(number_allocator, SchematicNumber{ .number = number, .start = start, .end = index - 1 });
