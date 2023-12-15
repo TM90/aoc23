@@ -41,6 +41,59 @@ fn RetrieveSummedPartValues(previous_symbols: SchematicSymbolList, current_line:
     }
     return sum;
 }
+fn RetrieveGearValue(gear_location: u64, previous_numbers: SchematicNumberList, current_numbers: SchematicNumberList, next_numbers: SchematicNumberList) ?u64 {
+    var adjecent_numbers: u64 = 0;
+    var gear_value: u64 = 1;
+    var start_compare: u64 = 0;
+    for (previous_numbers.items(.number), previous_numbers.items(.start), previous_numbers.items(.end)) |number, start, end| {
+        if (start == 0) {
+            start_compare = 0;
+        } else {
+            start_compare = start - 1;
+        }
+        if (gear_location >= start_compare and gear_location <= end + 1) {
+            gear_value *= number;
+            adjecent_numbers += 1;
+        }
+    }
+    for (current_numbers.items(.number), current_numbers.items(.start), current_numbers.items(.end)) |number, start, end| {
+        if (start == 0) {
+            start_compare = 0;
+        } else {
+            start_compare = start - 1;
+        }
+        if (gear_location >= start_compare and gear_location <= end + 1) {
+            gear_value *= number;
+            adjecent_numbers += 1;
+        }
+    }
+    for (next_numbers.items(.number), next_numbers.items(.start), next_numbers.items(.end)) |number, start, end| {
+        if (start == 0) {
+            start_compare = 0;
+        } else {
+            start_compare = start - 1;
+        }
+        if (gear_location >= start_compare and gear_location <= end + 1) {
+            gear_value *= number;
+            adjecent_numbers += 1;
+        }
+    }
+    if (adjecent_numbers == 2) {
+        return gear_value;
+    }
+    return null;
+}
+
+fn RetrieveSummedGearValues(previous_numbers: SchematicNumberList, current_line: SchematicLine, next_numbers: SchematicNumberList) u64 {
+    var sum: u64 = 0;
+    for (current_line.symbols.items(.location), current_line.symbols.items(.symbol)) |location, symbol| {
+        switch (symbol) {
+            '*' => sum += RetrieveGearValue(location, previous_numbers, current_line.numbers, next_numbers) orelse 0,
+            else => continue,
+        }
+    }
+    return sum;
+}
 
 const SchematicLine = struct {
     numbers: SchematicNumberList,
@@ -117,6 +170,7 @@ pub fn main() !void {
     var current_line = SchematicLine.emptyLine();
     var next_line = SchematicLine.emptyLine();
     var sum_1a: u64 = 0;
+    var sum_1b: u64 = 0;
     while (!eof) {
         var number_gpa = std.heap.GeneralPurposeAllocator(.{}){};
         var symbol_gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -129,9 +183,11 @@ pub fn main() !void {
         current_line = next_line;
         next_line = SchematicLine.from_raw_line(line, number_gpa.allocator(), symbol_gpa.allocator()) catch unreachable;
         sum_1a += RetrieveSummedPartValues(previous_line.symbols, current_line, next_line.symbols);
+        sum_1b += RetrieveSummedGearValues(previous_line.numbers, current_line, next_line.numbers);
         fbs.reset();
     }
     sum_1a += RetrieveSummedPartValues(current_line.symbols, next_line, SchematicSymbolList{});
     try stdout.print("Result 1a: {d}\n", .{sum_1a});
+    try stdout.print("Result 1b: {d}\n", .{sum_1b});
     try bw.flush(); // don't forget to flush!
 }
