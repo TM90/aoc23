@@ -55,6 +55,10 @@ const Card = struct {
         }
         return sum;
     }
+    pub fn deinit(self: Card) void {
+        self.numbers_you_have.deinit();
+        self.winning_numbers.deinit();
+    }
 };
 
 pub fn main() !void {
@@ -71,12 +75,15 @@ pub fn main() !void {
     while (!eof) {
         var winning_number_allocator = std.heap.GeneralPurposeAllocator(.{}){};
         var current_numbers_allocator = std.heap.GeneralPurposeAllocator(.{}){};
+        defer _ = winning_number_allocator.deinit();
+        defer _ = current_numbers_allocator.deinit();
         file.reader().streamUntilDelimiter(fbs.writer(), '\n', fbs.buffer.len) catch |err| switch (err) {
             error.EndOfStream => eof = true,
             else => |e| return e,
         };
         const line = fbs.getWritten();
         const card = Card.parse(winning_number_allocator.allocator(), current_numbers_allocator.allocator(), line);
+        defer card.deinit();
         sum_1a += card.points();
         fbs.reset();
     }
