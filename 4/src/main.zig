@@ -1,9 +1,12 @@
 const std = @import("std");
-
+const Stack = std.MultiArrayList(Card);
 const Card = struct {
+    id: u64,
     winning_numbers: std.ArrayList(u64),
     numbers_you_have: std.ArrayList(u64),
-
+    matches: u64,
+    children_start: u64,
+    children_end: u64,
     fn parse_numbers(allocator: std.mem.Allocator, line: []const u8) std.ArrayList(u64) {
         var numbers = std.ArrayList(u64).init(allocator);
         var numbers_raw = std.mem.splitScalar(u8, line, ' ');
@@ -17,7 +20,7 @@ const Card = struct {
         return numbers;
     }
 
-    pub fn parse(winning_allocator: std.mem.Allocator, you_have_allocator: std.mem.Allocator, line: []const u8) Card {
+    pub fn parse(winning_allocator: std.mem.Allocator, you_have_allocator: std.mem.Allocator, line: []const u8, id: u64) Card {
         var split = std.mem.splitScalar(u8, line, ':');
         _ = split.next() orelse "";
         var number_block = split.next() orelse "";
@@ -27,15 +30,27 @@ const Card = struct {
         const winning_numbers = parse_numbers(winning_allocator, winning_number_line);
         const numbers_you_have = parse_numbers(you_have_allocator, current_number_line);
         return Card{
+            .id = id,
             .winning_numbers = winning_numbers,
             .numbers_you_have = numbers_you_have,
+            .matches = matches(numbers_you_have, winning_numbers),
+            .children_start = id + 1,
+            .children_end = id + matches(numbers_you_have, winning_numbers) + 1,
         };
     }
 
-    fn matches(self: Card) u64 {
+    pub fn children_end(self: Card) u64 {
+        return self.id + self.matches() + 1;
+    }
+
+    pub fn children_start(self: Card) u64 {
+        return self.id + 1;
+    }
+
+    pub fn matches(numbers_you_have: std.ArrayList(u64), winning_numbers: std.ArrayList(u64)) u64 {
         var sum: u64 = 0;
-        for (self.numbers_you_have.items) |number| {
-            for (self.winning_numbers.items) |winner| {
+        for (numbers_you_have.items) |number| {
+            for (winning_numbers.items) |winner| {
                 if (number == winner) {
                     sum += 1;
                 }
@@ -43,8 +58,9 @@ const Card = struct {
         }
         return sum;
     }
+
     pub fn points(self: Card) u64 {
-        const n = self.matches();
+        const n = self.matches;
         var sum: u64 = 0;
         for (0..n) |value| {
             if (value >= 1) {
@@ -72,22 +88,47 @@ pub fn main() !void {
     var buffer: [1024]u8 = undefined;
     var fbs = std.io.fixedBufferStream(&buffer);
     var sum_1a: u64 = 0;
+    var sum_1b: u64 = 0;
+    var winning_number_allocator = std.heap.GeneralPurposeAllocator(.{}){};
+    var current_numbers_allocator = std.heap.GeneralPurposeAllocator(.{}){};
+    var stack_allocator = std.heap.GeneralPurposeAllocator(.{}){};
+    var stack = Stack{};
+    var id: u64 = 1;
+    //defer _ = winning_number_allocator.deinit();
+    //defer _ = current_numbers_allocator.deinit();
     while (!eof) {
-        var winning_number_allocator = std.heap.GeneralPurposeAllocator(.{}){};
-        var current_numbers_allocator = std.heap.GeneralPurposeAllocator(.{}){};
-        defer _ = winning_number_allocator.deinit();
-        defer _ = current_numbers_allocator.deinit();
         file.reader().streamUntilDelimiter(fbs.writer(), '\n', fbs.buffer.len) catch |err| switch (err) {
             error.EndOfStream => eof = true,
             else => |e| return e,
         };
+        //std.log.info("{d}", .{(file.getPos() catch unreachable)});
+        //file.seekTo(0) catch unreachable;
         const line = fbs.getWritten();
-        const card = Card.parse(winning_number_allocator.allocator(), current_numbers_allocator.allocator(), line);
-        defer card.deinit();
-        sum_1a += card.points();
+        const card = Card.parse(winning_number_allocator.allocator(), current_numbers_allocator.allocator(), line, id);
         fbs.reset();
+        sum_1a += card.points();
+        id += 1;
+        stack.append(stack_allocator.allocator(), card) catch unreachable;
     }
+
+    var valid_scratchcards_allocator = std.heap.GeneralPurposeAllocator(.{}){};
+    var valid_scratchcard_ids = std.ArrayList(u64).init(valid_scratchcards_allocator.allocator());
+    for (stack.items(.id)) |card_id| {
+        valid_scratchcard_ids.insert(0, card_id) catch unreachable;
+    }
+    while (valid_scratchcard_ids.popOrNull()) |element| {
+        sum_1b += 1;
+        const card = stack.get(element - 1);
+        for (card.children_start..card.children_end) |new_element| {
+            //valid_scratchcard_ids.appendSlice(items: []const T)
+            valid_scratchcard_ids.insert(0, new_element) catch unreachable;
+        }
+        if (sum_1b % 10000 == 0) {
+            std.log.info("Length scratchpad ids: {d}\n", .{valid_scratchcard_ids.items.len});
+        }
+    }
+
     try stdout.print("Result 1a: {d}\n", .{sum_1a});
-    try stdout.print("Result 1b:\n", .{});
+    try stdout.print("Result 1b: {d}\n", .{sum_1b});
     try bw.flush();
 }
