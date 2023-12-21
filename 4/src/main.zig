@@ -121,7 +121,7 @@ pub fn main() !void {
         const card = stack.get(element - 1);
         for (card.children_start..card.children_end) |new_element| {
             //valid_scratchcard_ids.appendSlice(items: []const T)
-            valid_scratchcard_ids.insert(0, new_element) catch unreachable;
+            valid_scratchcard_ids.append(new_element) catch unreachable;
         }
         if (sum_1b % 10000 == 0) {
             std.log.info("Length scratchpad ids: {d}\n", .{valid_scratchcard_ids.items.len});
