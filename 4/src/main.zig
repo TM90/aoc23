@@ -94,15 +94,14 @@ pub fn main() !void {
     var stack_allocator = std.heap.GeneralPurposeAllocator(.{}){};
     var stack = Stack{};
     var id: u64 = 1;
-    //defer _ = winning_number_allocator.deinit();
-    //defer _ = current_numbers_allocator.deinit();
+    defer _ = winning_number_allocator.deinit();
+    defer _ = current_numbers_allocator.deinit();
+    defer _ = stack_allocator.deinit();
     while (!eof) {
         file.reader().streamUntilDelimiter(fbs.writer(), '\n', fbs.buffer.len) catch |err| switch (err) {
             error.EndOfStream => eof = true,
             else => |e| return e,
         };
-        //std.log.info("{d}", .{(file.getPos() catch unreachable)});
-        //file.seekTo(0) catch unreachable;
         const line = fbs.getWritten();
         const card = Card.parse(winning_number_allocator.allocator(), current_numbers_allocator.allocator(), line, id);
         fbs.reset();
@@ -120,14 +119,13 @@ pub fn main() !void {
         sum_1b += 1;
         const card = stack.get(element - 1);
         for (card.children_start..card.children_end) |new_element| {
-            //valid_scratchcard_ids.appendSlice(items: []const T)
             valid_scratchcard_ids.append(new_element) catch unreachable;
         }
-        if (sum_1b % 10000 == 0) {
-            std.log.info("Length scratchpad ids: {d}\n", .{valid_scratchcard_ids.items.len});
-        }
     }
-
+    while (stack.popOrNull()) |card| {
+        card.deinit();
+    }
+    stack.deinit(stack_allocator.allocator());
     try stdout.print("Result 1a: {d}\n", .{sum_1a});
     try stdout.print("Result 1b: {d}\n", .{sum_1b});
     try bw.flush();
