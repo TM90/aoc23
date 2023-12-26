@@ -187,7 +187,7 @@ pub fn main() !void {
         fbs.reset();
     }
     sum_1a += RetrieveSummedPartValues(current_line.symbols, next_line, SchematicSymbolList{});
-    try stdout.print("Result 1a: {d}\n", .{sum_1a});
-    try stdout.print("Result 1b: {d}\n", .{sum_1b});
+    try stdout.print("Result 3a: {d}\n", .{sum_1a});
+    try stdout.print("Result 3b: {d}\n", .{sum_1b});
     try bw.flush(); // don't forget to flush!
 }

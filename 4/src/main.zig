@@ -126,7 +126,7 @@ pub fn main() !void {
         card.deinit();
     }
     stack.deinit(stack_allocator.allocator());
-    try stdout.print("Result 1a: {d}\n", .{sum_1a});
-    try stdout.print("Result 1b: {d}\n", .{sum_1b});
+    try stdout.print("Result 4a: {d}\n", .{sum_1a});
+    try stdout.print("Result 4b: {d}\n", .{sum_1b});
     try bw.flush();
 }
