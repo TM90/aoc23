@@ -74,7 +74,6 @@ pub fn main() !void {
     for (almanac.seeds.items) |element| {
         try stdout.print("{d}\n", .{element});
     }
-    // try stdout.print("{s}\n", .{file_content});
     try stdout.print("Result 5a: \n", .{});
     try stdout.print("Result 5b: \n", .{});
 
